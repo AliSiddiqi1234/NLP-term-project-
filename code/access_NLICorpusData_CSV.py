@@ -53,22 +53,22 @@ def initDataStructs():
 initDataStructs()
 
 # note these lengths are the number of Instructions and should be equivalent
-print len(table_DoL['Index'])
-print len(table_LoD)
+print(len(table_DoL['Index']))
+print(len(table_LoD))
 
 # table entry for instruction @ Index #277
-print table_LoD[277]
+print(table_LoD[277])
 
 # table entries for instructions from Index #277 to #279
-print table_LoD[277:280]
+print(table_LoD[277:280])
 
 # just the instruction @ Index #277
-print table_LoD[277]['Instruction']
-print table_DoL['Instruction'][277]
+print(table_LoD[277]['Instruction'])
+print(table_DoL['Instruction'][277])
 
 # all entries in the Instruction field 
-print table_DoL['Instruction']
+print(table_DoL['Instruction'])
 
 # instructions from Index #277 to #279 
-print table_DoL['Instruction'][277:280]
+print(table_DoL['Instruction'][277:280])
 

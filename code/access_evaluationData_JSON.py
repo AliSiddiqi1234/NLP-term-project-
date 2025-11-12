@@ -24,17 +24,17 @@ source = '../data/evaluationData.json'
 with open(source) as data_file:
     data = json.load(data_file)
 
-print len(data)
+print(len(data))
 # this is the data entry from study 2
 
 # this data is orgnaized by 'userID@instructionIndex' being the first key
 # to see a list of valid user/index permutations 
-print data.keys()
+print(data.keys())
 
 # then access either one users input table or a particular field in this table
 # here we access userID 1 evaluating instruction index #282
-print data['U1@S282']
-print data['U1@S282']['Instruction']
+print(data['U1@S282'])
+print(data['U1@S282']['Instruction'])
 
 """
 2. In evaluationDataAvg
@@ -57,15 +57,15 @@ source = '../data/evaluationDataAvg.json'
 with open(source) as data_file:
     data = json.load(data_file)
 
-print len(data)
+print(len(data))
 
 # this data is orgnaized with instruction Index as first key 
 # to see a list of valid keys 
-print data.keys()
+print(data.keys())
 
 # access instruction @ Index #282 data
-print data['282']
-print data['282']['Instruction']
+print(data['282'])
+print(data['282']['Instruction'])
 
 
 

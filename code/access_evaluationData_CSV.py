@@ -1,4 +1,5 @@
 import csv
+import ipdb
 from collections import defaultdict
 
 numEntries = 1583
@@ -47,27 +48,27 @@ initDataStructs()
 
 # note these lengths are the number of NLI from the original corpus and should be equivalent
 # there will be 'holes' in these data structures where no evaluation data was collected due to downsampling from the original set to a cleaner less noisy subset
-print len(table_DoL['Index'])
-print len(table_LoD)
+print(len(table_DoL['Index']))
+print(len(table_LoD))
 
 # an example of an entry with no evaluation data
-print table_LoD[133]
+print(table_LoD[133])
 
 # table entry for instruction @ Index #277
-print table_LoD[277]
+print(table_LoD[277])
 
 # table entries for instructions from Index #277 to #279
-print table_LoD[277:280]
+print(table_LoD[277:280])
 
 # just the instruction @ Index #277
-print table_LoD[277]['Instruction']
-print table_DoL['Instruction'][277]
+print(table_LoD[277]['Instruction'])
+print(table_DoL['Instruction'][277])
 
 # all entries in the Instruction field 
-print table_DoL['Instruction']
+print(table_DoL['Instruction'])
 
 # instructions from Index #277 to #279 
-print table_DoL['Instruction'][277:280]
+print(table_DoL['Instruction'][277:280])
 
 
 
@@ -91,24 +92,23 @@ source = '../data/evaluationDataAvg.csv'
 initDataStructs()
 
 
-print len(table_DoL['Index'])
-print len(table_LoD)
+print(len(table_DoL['Index']))
+print(len(table_LoD))
 
 # an example of an entry with no evaluation data
-print table_LoD[133]
+print(table_LoD[133])
 
-print table_LoD[277]
+print(table_LoD[277])
 
-print table_LoD[277:280]
+print(table_LoD[277:280])
 
-print table_LoD[277]['Instruction']
-print table_DoL['Instruction'][277]
+print(table_LoD[277]['Instruction'])
+print(table_DoL['Instruction'][277])
 
-print table_DoL['Instruction']
+print(table_DoL['Instruction'])
 
-print table_DoL['Instruction'][277:280]
+print(table_DoL['Instruction'][277:280])
 
-import ipdb
 ipdb.set_trace()
 
 
