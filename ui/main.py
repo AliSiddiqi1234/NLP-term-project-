@@ -1,6 +1,7 @@
 import pygame
 import sys
 import random
+import math
 from pathlib import Path
 
 # Add parent directory to path to import nlp module
@@ -176,15 +177,24 @@ PURPLE = (128, 0, 128)
 ORANGE = (255, 165, 0)
 GRAY = (128, 128, 128)
 
-COLOR_MAP = {
-    "red": RED,
-    "blue": BLUE,
-    "green": GREEN,
-    "yellow": YELLOW,
-    "purple": PURPLE,
-    "orange": ORANGE,
-    "gray": GRAY,
+COLOR_MAP = { 
+    "red":      (255,0,0), 
+    "blue":     (0,0,255), 
+    "green":    (0,255,0), 
+    "yellow":   (255,255,0), 
+    "purple":   (128,0,128), 
+    "orange":   (255,165,0), 
+    "gray":     (128,128,128) 
 }
+# COLOR_MAP = {
+#     "red": RED,
+#     "blue": BLUE,
+#     "green": GREEN,
+#     "yellow": YELLOW,
+#     "purple": PURPLE,
+#     "orange": ORANGE,
+#     "gray": GRAY,
+# }
 
 
 class GameObject:
@@ -194,6 +204,10 @@ class GameObject:
         self.color = color
         self.shape = shape
         self.size = OBJECT_SIZE
+    
+    def update_pos(self, x, y):
+        self.x = x
+        self.y = y
 
     def draw(self, screen):
         if self.shape == "block":
@@ -227,10 +241,18 @@ class Player:
         self.size = PLAYER_SIZE
         self.color = WHITE
         self.speed = 5
+        self.held_object = None
 
     def draw(self, screen):
         pygame.draw.rect(screen, self.color, (self.x, self.y, self.size, self.size))
         pygame.draw.rect(screen, BLACK, (self.x, self.y, self.size, self.size), 2)
+        if self.held_object:
+            pygame.draw.rect(
+                screen, 
+                (0, 255, 0), 
+                (self.x, self.y, self.size, self.size), 
+                2
+            )
 
     def move(self, dx, dy):
         self.x += dx * self.speed
@@ -239,6 +261,14 @@ class Player:
         # Keep player on screen
         self.x = max(0, min(self.x, SCREEN_WIDTH - self.size))
         self.y = max(0, min(self.y, SCREEN_HEIGHT - self.size))
+        if self.held_object:
+            self.held_object.update_pos(self.x + 5, self.y + 5)
+
+    def pick_up(self, obj):
+        self.held_object = obj
+
+    def drop(self):
+        self.held_object = None
 
     def get_rect(self):
         return pygame.Rect(self.x, self.y, self.size, self.size)
@@ -258,10 +288,13 @@ class Game:
         self.player = Player(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
         self.objects = self.create_objects()
         self.input_text = ""
-        self.input_active = False
+        self.input_active = True
         self.last_command = ""
         self.message = ""
         self.message_timer = 0
+
+        self.auto_target = None
+        self.auto_action = None
 
     def create_objects(self):
         objects = []
@@ -283,6 +316,7 @@ class Game:
 
         return objects
 
+    # TODO improve
     def find_object_by_description(self, obj_desc):
         if not obj_desc:
             return None
@@ -309,6 +343,44 @@ class Game:
 
         return matching_objects
 
+    def resolve_chain(self, chain):
+        """
+        Solves: [Blue, Red, Robot]
+        1. Ref = Robot
+        2. Find Red closest to Ref -> Result: specific Red Block
+        3. Ref = that Red Block
+        4. Find Blue closest to Ref -> Result: specific Blue Block
+        """
+        current_ref_pos = self.player.get_center()
+        
+        # Reverse list to process from Anchor (Robot) up to Target
+        # Chain comes in as [Target, Intermediate, Anchor] usually
+        # But nlp.py output depends on order. Let's assume input is [Target, Ref1, Ref2]
+        # We need to process Ref2 -> Ref1 -> Target
+        
+        processed_target = None
+        
+        # Reverse the chain so we start with the last mentioned object (usually the anchor)
+        for i in range(len(chain)-1, -1, -1):
+            desc = chain[i]
+            
+            # If explicit "robot", reset anchor to player
+            if desc.get("color") == "you" or desc.get("shape") == "robot":
+                current_ref_pos = self.player.get_center()
+                continue
+
+            candidates = self.find_object_by_description(desc)
+            if not candidates: return None
+            
+            # Sort candidates by distance to current reference
+            candidates.sort(key=lambda o: math.dist(o.get_center(), current_ref_pos))
+            
+            # The closest one becomes the reference for the NEXT iteration
+            processed_target = candidates[0]
+            current_ref_pos = processed_target.get_center()
+            
+        return processed_target
+    
     def find_closest_object(self, objects, reference_point):
         if not objects:
             return None
@@ -349,117 +421,119 @@ class Game:
         try:
             parsed = parse_command(command_text)
             self.last_command = str(parsed)
-
-            if not parsed["action"]:
+            
+            action = parsed.get("action")
+            if not action:
                 self.message = "No action detected"
                 self.message_timer = 120
                 return
 
-            # Handle movement commands
-            if parsed["action"] == "move":
-                if parsed["object"]:
-                    target_objects = self.find_object_by_description(parsed["object"])
-                    if target_objects:
-                        target_obj = target_objects[0]
-
-                        # Apply modifiers
-                        if parsed["modifier"] == "closest" and parsed["ref_object"]:
-                            ref_objects = self.find_object_by_description(
-                                parsed["ref_object"]
-                            )
-                            if ref_objects:
-                                target_obj = self.find_closest_object(
-                                    target_objects, ref_objects[0].get_center()
-                                )
-                        elif parsed["modifier"] == "farthest" and parsed["ref_object"]:
-                            ref_objects = self.find_object_by_description(
-                                parsed["ref_object"]
-                            )
-                            if ref_objects:
-                                target_obj = self.find_farthest_object(
-                                    target_objects, ref_objects[0].get_center()
-                                )
-
-                        if target_obj:
-                            # Move player towards target
-                            dx = (
-                                target_obj.get_center()[0] - self.player.get_center()[0]
-                            )
-                            dy = (
-                                target_obj.get_center()[1] - self.player.get_center()[1]
-                            )
-                            distance = (dx**2 + dy**2) ** 0.5
-
-                            if distance > 0:
-                                # Normalize and apply movement
-                                move_distance = min(distance, 50)  # Move in steps
-                                dx = (dx / distance) * move_distance
-                                dy = (dy / distance) * move_distance
-                                self.player.move(dx, dy)
-
-                                self.message = f"Moving towards {parsed['object']}"
-                                self.message_timer = 120
-                    else:
-                        self.message = f"Object not found: {parsed['object']}"
-                        self.message_timer = 120
+            # 1. HANDLE DROP/PLACE
+            if action == "place":
+                if self.player.drop():
+                    self.message = "Dropped object"
                 else:
-                    # Simple directional movement based on relation
-                    if parsed["relation"] == "left_of":
-                        self.player.move(-30, 0)
-                    elif parsed["relation"] == "right_of":
-                        self.player.move(30, 0)
-                    elif parsed["relation"] == "in_front_of":
-                        self.player.move(0, -30)
-                    elif parsed["relation"] == "behind":
-                        self.player.move(0, 30)
+                    self.message = "Not holding anything!"
+                return
+
+            # 2. RESOLVE TARGET (Smart Lookup)
+            target_obj = None
+            if parsed.get("object_chain") and len(parsed["object_chain"]) > 0:
+                target_obj = self.resolve_chain(parsed["object_chain"])
+            elif parsed.get("object"): 
+                # Fallback if chain is empty/simple
+                objs = self.find_object_by_description(parsed["object"])
+                if objs: target_obj = objs[0] # Default to first match if simple
+
+            # 3. DECIDE MOVEMENT TYPE
+            if target_obj:
+                # --- A. OBJECT FOUND: PATHFINDING (Auto-Pilot) ---
+                if action == "pick":
+                    self.auto_target = target_obj
+                    self.auto_action = "pick"
+                    self.message = f"Picking up {target_obj.color} {target_obj.shape}..."
+                elif action == "move":
+                    self.auto_target = target_obj
+                    self.auto_action = "move"
+                    self.message = f"Moving to {target_obj.color} {target_obj.shape}..."
+            
+            else:
+                # --- B. NO OBJECT: DIRECTIONAL MOVEMENT (Restored!) ---
+                # This runs if you say "Move left", "Go behind", etc.
+                relation = parsed.get("relation")
+                
+                if relation == "left_of":
+                    self.player.move(-50, 0)
+                    self.message = "Moving Left"
+                elif relation == "right_of":
+                    self.player.move(50, 0)
+                    self.message = "Moving Right"
+                elif relation == "in_front_of": # "Up" in 2D
+                    self.player.move(0, -50)
+                    self.message = "Moving Up"
+                elif relation == "behind": # "Down" in 2D
+                    self.player.move(0, 50)
+                    self.message = "Moving Down"
+                else:
+                    if action == "move":
+                        self.message = "Move where? (Left, Right, or name an object)"
                     else:
-                        self.message = "Move where?"
-                        self.message_timer = 120
+                        self.message = "I couldn't find that object."
 
         except Exception as e:
             self.message = f"Error: {str(e)}"
             self.message_timer = 120
-
+            print(f"Error executing command: {e}")
+    
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
-
+                
             elif event.type == pygame.KEYDOWN:
+                # 1. Handle Enter Key (Send Command)
                 if event.key == pygame.K_RETURN:
-                    if self.input_active and self.input_text:
+                    if self.input_text.strip():
+                        print(f"Sending: {self.input_text}") # Debug print
                         self.execute_nlp_command(self.input_text)
-                        self.input_text = ""
-                        self.input_active = False
-                    else:
-                        self.input_active = True
-
+                        self.input_text = "" # Clear input box
+                        
+                # 2. Handle Backspace (Delete Character)
+                elif event.key == pygame.K_BACKSPACE:
+                    self.input_text = self.input_text[:-1]
+                
+                # 3. Handle Escape (Clear Input)
                 elif event.key == pygame.K_ESCAPE:
-                    self.input_active = False
                     self.input_text = ""
-
-                elif self.input_active:
-                    if event.key == pygame.K_BACKSPACE:
-                        self.input_text = self.input_text[:-1]
-                    else:
-                        self.input_text += event.unicode
-
-                # Manual controls for testing
-                elif not self.input_active:
-                    if event.key == pygame.K_LEFT:
-                        self.player.move(-1, 0)
-                    elif event.key == pygame.K_RIGHT:
-                        self.player.move(1, 0)
-                    elif event.key == pygame.K_UP:
-                        self.player.move(0, -1)
-                    elif event.key == pygame.K_DOWN:
-                        self.player.move(0, 1)
-
+                    
+                # 4. Handle Normal Typing
+                else:
+                    self.input_text += event.unicode
         return True
 
     def update(self):
         if self.message_timer > 0:
             self.message_timer -= 1
+        #Auto-Pilot Logic
+        if self.auto_target:
+            t_pos = self.auto_target.get_center()
+            p_pos = self.player.get_center()
+            
+            # Calculate distance
+            dx = t_pos[0] - p_pos[0]
+            dy = t_pos[1] - p_pos[1]
+            dist = math.sqrt(dx**2 + dy**2)
+            
+            if dist < 10: # We arrived
+                if self.auto_action == "pick":
+                    self.player.pick_up(self.auto_target)
+                    self.message = "Picked up!"
+                self.auto_target = None
+                self.auto_action = None
+            else:
+                # Normalize and move
+                speed = 5
+                self.player.move((dx/dist), (dy/dist))
 
     def draw(self):
         self.screen.fill(BLACK)
