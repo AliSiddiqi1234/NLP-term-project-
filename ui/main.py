@@ -6,12 +6,16 @@ import threading
 import speech_recognition as sr
 from pathlib import Path
 
-# Add parent directory to path to import nlp module
-sys.path.append(str(Path(__file__).parent.parent))
+try:
+    import speech_recognition as sr
+except ImportError:
+    sr = None
+
 try:
     from nlp import parse_command
-except ImportError:
+except ImportError as e:
     print("Warning: Could not import nlp module, using fallback parser")
+    print(e)
 
     # Fallback simple parser
     ACTION_KEYWORDS = {
@@ -21,7 +25,7 @@ except ImportError:
     }
 
     COLORS = ["red", "blue", "green", "yellow", "purple", "orange", "gray"]
-    SHAPES = ["block", "circle", "triangle"]
+    SHAPES = ["circle", "triangle"]
 
     def parse_command(text):
         text_lower = text.lower()
@@ -71,7 +75,7 @@ MODIFIER_KEYWORDS = {
 }
 
 COLORS = ["red", "blue", "green", "yellow", "purple", "orange", "gray"]
-SHAPES = ["block", "circle", "triangle"]
+SHAPES = ["circle", "triangle"]
 
 
 def simple_parse_command(text):
@@ -242,7 +246,7 @@ class Player:
         self.y = y
         self.size = PLAYER_SIZE
         self.color = WHITE
-        self.speed = 5
+        self.speed = 30
         self.held_object = None
 
     def draw(self, screen):
@@ -295,8 +299,12 @@ class Game:
         self.auto_target = None
         self.auto_action = None
 
-        self.recognizer = sr.Recognizer()
-        self.voice_thread = None
+        if sr:
+            self.recognizer = sr.Recognizer()
+            self.listening = False
+        else:
+            self.recognizer = None
+            self.listening = False
 
     def create_objects(self):
         objects = []
@@ -499,10 +507,17 @@ class Game:
                     self.player.move(20, 0)
                     self.message = "Moving Right"
                 elif relation == "in_front_of":  # "Up" in 2D
+<<<<<<< HEAD
                     self.player.move(0, -20)
                     self.message = "Moving Up"
                 elif relation == "behind":  # "Down" in 2D
                     self.player.move(0, 20)
+=======
+                    self.player.move(0, -50)
+                    self.message = "Moving Up"
+                elif relation == "behind":  # "Down" in 2D
+                    self.player.move(0, 50)
+>>>>>>> d0608c5 (voice commands)
                     self.message = "Moving Down"
                 else:
                     if action == "move":
@@ -536,11 +551,22 @@ class Game:
                 elif event.key == pygame.K_ESCAPE:
                     self.input_text = ""
 
+<<<<<<< HEAD
                 # 4. Handle Voice Input (Ctrl+V)
                 elif event.key == pygame.K_v and (event.mod & pygame.KMOD_CTRL):
                     self.start_voice_input()
 
                 # 5. Handle Normal Typing
+=======
+                # 4. Handle Voice Input
+                elif (
+                    event.key == pygame.K_v
+                    and (event.mod & pygame.KMOD_CTRL)
+                    and not self.listening
+                ):
+                    self.start_voice_input()
+
+>>>>>>> d0608c5 (voice commands)
                 else:
                     self.input_text += event.unicode
         return True
@@ -589,7 +615,11 @@ class Game:
 
         # Instructions
         inst_text = self.input_font.render(
+<<<<<<< HEAD
             "Press ENTER to type command, Ctrl+V for voice, arrow keys to move manually",
+=======
+            "Press ENTER to type command, V for voice, arrow keys to move manually",
+>>>>>>> d0608c5 (voice commands)
             True,
             WHITE,
         )
@@ -617,10 +647,17 @@ class Game:
 
         # Last command
         if self.last_command:
+            print(self.last_command)
             cmd_text = self.input_font.render(
                 f"Last: {self.last_command[:50]}...", True, GRAY
             )
             self.screen.blit(cmd_text, (10, y_offset))
+            y_offset += 25
+
+        # Listening status
+        if self.listening:
+            listening_text = self.input_font.render("Listening...", True, RED)
+            self.screen.blit(listening_text, (10, y_offset))
             y_offset += 25
 
         # Message
@@ -629,6 +666,43 @@ class Game:
             self.screen.blit(msg_text, (10, y_offset))
 
         pygame.display.flip()
+
+    def start_voice_input(self):
+        if not sr:
+            self.message = (
+                "Speech recognition not available (install speech_recognition)"
+            )
+            self.message_timer = 120
+            return
+        self.listening = True
+        self.message = "Listening..."
+        self.message_timer = 120
+        import threading
+
+        threading.Thread(target=self._listen_and_recognize).start()
+
+    def _listen_and_recognize(self):
+        try:
+            with sr.Microphone() as source:
+                self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=5)
+            text = self.recognizer.recognize_google(audio).lower()
+            self.input_text = text
+            self.message = f"Recognized: {text}"
+            self.message_timer = 120
+            self.execute_nlp_command(text)
+            self.input_text = ""
+        except sr.UnknownValueError:
+            self.message = "Could not understand audio"
+            self.message_timer = 120
+        except sr.RequestError as e:
+            self.message = f"Speech recognition error: {e}"
+            self.message_timer = 120
+        except sr.WaitTimeoutError:
+            self.message = "No speech detected"
+            self.message_timer = 120
+        finally:
+            self.listening = False
 
     def run(self):
         running = True
