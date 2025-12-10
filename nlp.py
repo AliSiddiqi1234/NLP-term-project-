@@ -9,6 +9,12 @@ except OSError:
     print("Spacy model not found. Run: python -m spacy download en_core_web_sm")
     nlp = None
 
+# Keywords
+ACTION_KEYWORDS = {
+    "move": ["move", "push", "slide", "shift", "go", "walk"],
+    "pick": ["pick", "grab", "lift", "take", "collect", "get"],
+    "place": ["place", "put", "drop", "set", "leave", "release"]
+}
 #words to ignore when parsing reference NPs
 RELATIONAL_NOUNS = {"left", "right", "front", "top", "bottom", "closest", "farthest", "you", "to", "of"}
 
@@ -31,6 +37,12 @@ def extract_action_keywords(df):
 
     return {"action": common_verbs}
 
+MODIFIER_KEYWORDS = {
+    "closest": ["closest", "closest to", "nearest", "near"],
+    "farthest": ["farthest", "farthest from", "far"]
+}
+
+RELATIONAL_NOUNS = {"left", "right", "front", "top", "bottom", "closest", "farthest", "you", "to", "of", "the", "a", "an"}
 
 SPATIAL_WORDS = {
     "left", "right", "front", "behind", "top", "bottom",
@@ -117,11 +129,13 @@ def parse_command(text, ACTION_KEYWORDS, RELATION_KEYWORDS, MODIFIER_KEYWORDS):
     action = detect_action(doc, ACTION_KEYWORDS)
     #basically gets all the noun phrases from the text for a list  
     noun_chunks = [chunk for chunk in doc.noun_chunks]
-    #removes nouns like left, right, etc
-    object_chunks = [
-        chunk for chunk in noun_chunks 
-        if chunk.root.text.lower() not in RELATIONAL_NOUNS
-    ]
+    
+    # Filter noun chunks to find actual objects
+    object_chunks = []
+    for chunk in noun_chunks:
+        clean_text = " ".join([t.text for t in chunk if t.text.lower() not in RELATIONAL_NOUNS])
+        if clean_text.strip():
+            object_chunks.append(chunk)
 
     #the main object of a users sentence 
     primary_obj = extract_obj_from_np(object_chunks[0]) if len(object_chunks) >= 1 else None
@@ -130,6 +144,10 @@ def parse_command(text, ACTION_KEYWORDS, RELATION_KEYWORDS, MODIFIER_KEYWORDS):
 
     #if there are secondary objects in the sentence, remove the relational nouns from it if it has any, get the color and shape, as well as figure out if it has any modifiers        
     if len(object_chunks) >= 2:
+        reference_obj = extract_obj_from_np(object_chunks[1])
+        modifier = detect_modifier(text)
+
+    relation = detect_relation(text)
         ref_chunk = clean_reference_np(object_chunks[1])
         reference_obj = extract_obj_from_np(ref_chunk)
         modifier = detect_modifier(text, MODIFIER_KEYWORDS)
