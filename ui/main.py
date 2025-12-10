@@ -481,7 +481,13 @@ class Game:
                 # Fallback if chain is empty/simple
                 objs = self.find_object_by_description(parsed["object"])
                 if objs:
-                    target_obj = objs[0]  # Default to first match if simple
+                    # Sort by distance to player to get the closest
+                    objs.sort(
+                        key=lambda o: math.dist(
+                            o.get_center(), self.player.get_center()
+                        )
+                    )
+                    target_obj = objs[0]
 
             # 3. DECIDE MOVEMENT TYPE
             if target_obj:
