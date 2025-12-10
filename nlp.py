@@ -2,7 +2,12 @@ import spacy
 import pandas as pd
 from collections import Counter
 
-nlp = spacy.load("en_core_web_sm")
+# Load Spacy Model
+try:
+    nlp = spacy.load("en_core_web_sm")
+except OSError:
+    print("Spacy model not found. Run: python -m spacy download en_core_web_sm")
+    nlp = None
 
 #words to ignore when parsing reference NPs
 RELATIONAL_NOUNS = {"left", "right", "front", "top", "bottom", "closest", "farthest", "you", "to", "of"}
@@ -70,7 +75,6 @@ def detect_action(doc, ACTION_KEYWORDS):
             return lemma        
     return None
 
-#get the color and shape of the object based off the corpus
 def extract_obj_from_np(np):
     color = None
     shape = None
@@ -81,6 +85,9 @@ def extract_obj_from_np(np):
             color = token.text
         if token.pos_ == "NOUN":
             shape = token.text
+    # Default to block if we have a color but no shape
+    if color and not shape:
+        shape = "block"
     return {"color": color, "shape": shape} if shape else None
 
 #checks user input and returns the actual relation of the object  
