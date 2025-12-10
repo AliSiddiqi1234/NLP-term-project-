@@ -513,17 +513,10 @@ class Game:
                     self.player.move(20, 0)
                     self.message = "Moving Right"
                 elif relation == "in_front_of":  # "Up" in 2D
-<<<<<<< HEAD
                     self.player.move(0, -20)
                     self.message = "Moving Up"
                 elif relation == "behind":  # "Down" in 2D
                     self.player.move(0, 20)
-=======
-                    self.player.move(0, -50)
-                    self.message = "Moving Up"
-                elif relation == "behind":  # "Down" in 2D
-                    self.player.move(0, 50)
->>>>>>> d0608c5 (voice commands)
                     self.message = "Moving Down"
                 else:
                     if action == "move":
@@ -557,14 +550,6 @@ class Game:
                 elif event.key == pygame.K_ESCAPE:
                     self.input_text = ""
 
-<<<<<<< HEAD
-                # 4. Handle Voice Input (Ctrl+V)
-                elif event.key == pygame.K_v and (event.mod & pygame.KMOD_CTRL):
-                    self.start_voice_input()
-
-                # 5. Handle Normal Typing
-=======
-                # 4. Handle Voice Input
                 elif (
                     event.key == pygame.K_v
                     and (event.mod & pygame.KMOD_CTRL)
@@ -572,7 +557,6 @@ class Game:
                 ):
                     self.start_voice_input()
 
->>>>>>> d0608c5 (voice commands)
                 else:
                     self.input_text += event.unicode
         return True
@@ -621,11 +605,7 @@ class Game:
 
         # Instructions
         inst_text = self.input_font.render(
-<<<<<<< HEAD
             "Press ENTER to type command, Ctrl+V for voice, arrow keys to move manually",
-=======
-            "Press ENTER to type command, V for voice, arrow keys to move manually",
->>>>>>> d0608c5 (voice commands)
             True,
             WHITE,
         )
