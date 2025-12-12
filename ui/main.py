@@ -64,8 +64,8 @@ except ImportError as e:
 RELATION_KEYWORDS = {
     "left_of": ["left of", "to the left of", "on the left of", "left"],
     "right_of": ["right of", "to the right of", "on the right of", "right"],
-    "behind": ["behind", "back"],
-    "in_front_of": ["in front of", "front"],
+    "behind": ["behind", "back", "down"],
+    "in_front_of": ["in front of", "front", "up"],
     "on_top_of": ["on top of", "over"],
 }
 
@@ -191,6 +191,7 @@ COLOR_MAP = {
     "purple":   (128,0,128), 
     "orange":   (255,165,0), 
     "gray":     (128,128,128) 
+}
 COLOR_MAP = {
     "red": (255, 0, 0),
     "blue": (0, 0, 255),
@@ -204,32 +205,7 @@ COLOR_MAP = {
 #     "red": RED,
 #     "blue": BLUE,
 #     "green": GREEN,
-#     "yellow": YELLOW,Wednesday, December 10, 2025 at 1:53 PM
-yeah
-:sob:
-Click to react
-:thumbsup:
-Click to react
-:fire:
-Click to react
-Add Reaction
-Reply
-Forward
-More
-[1:53 PM]Wednesday, December 10, 2025 at 1:53 PM
-5:30 I’ll be home
-:sob:
-Click to react
-:thumbsup:
-Click to react
-:fire:
-Click to react
-Add Reaction
-Reply
-Forward
-More
-￼
-
+#     "yellow": YELLOW,
 #     "purple": PURPLE,
 #     "orange": ORANGE,
 #     "gray": GRAY,
@@ -335,6 +311,7 @@ class Game:
 
         self.auto_target = None
         self.auto_action = None
+        self.target_coords = None # where the robot will be trying to go
 
         if sr:
             self.recognizer = sr.Recognizer()
@@ -538,16 +515,16 @@ class Game:
                 relation = parsed.get("relation")
                 
                 if relation == "left_of":
-                    self.player.move(-50, 0)
+                    self.player.move(-10, 0)
                     self.message = "Moving Left"
                 elif relation == "right_of":
-                    self.player.move(50, 0)
+                    self.player.move(10, 0)
                     self.message = "Moving Right"
                 elif relation == "in_front_of": # "Up" in 2D
-                    self.player.move(0, -50)
+                    self.player.move(0, -10)
                     self.message = "Moving Up"
                 elif relation == "behind": # "Down" in 2D
-                    self.player.move(0, 50)
+                    self.player.move(0, 10)
                     self.message = "Moving Down"
                 else:
                     if action == "move":
@@ -590,32 +567,7 @@ class Game:
 
                 else:
                     self.input_text += event.unicode
-        return TrueWednesday, December 10, 2025 at 1:53 PM
-yeah
-:sob:
-Click to react
-:thumbsup:
-Click to react
-:fire:
-Click to react
-Add Reaction
-Reply
-Forward
-More
-[1:53 PM]Wednesday, December 10, 2025 at 1:53 PM
-5:30 I’ll be home
-:sob:
-Click to react
-:thumbsup:
-Click to react
-:fire:
-Click to react
-Add Reaction
-Reply
-Forward
-More
-￼
-
+        return True
 
     def update(self):
         if self.message_timer > 0:
