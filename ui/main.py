@@ -471,7 +471,20 @@ class Game:
     def execute_nlp_command(self, command_text):
         try:
             parsed = parse_command(command_text)
-            self.last_command = str(parsed)
+            
+            text_lower = command_text.lower()
+
+            if not parsed.get("relation"):
+                if "left" in text_lower:
+                    parsed["relation"] = "left_of"
+                elif "right" in text_lower:
+                    parsed["relation"] = "right_of"
+                elif "forward" in text_lower or "straight" in text_lower or "up" in text_lower:
+                    parsed["relation"] = "in_front_of"
+                elif "back" in text_lower or "behind" in text_lower or "down" in text_lower:
+                    parsed["relation"] = "behind"
+                self.last_command = str(parsed)
+
             
 
             action = parsed.get("action")
@@ -480,7 +493,6 @@ class Game:
                 self.message_timer = 120
                 return
 
-            # 1. HANDLE DROP/PLACE
             if action == "place":
                 if self.player.drop():
                     self.message = "Dropped object"
@@ -488,18 +500,14 @@ class Game:
                     self.message = "Not holding anything!"
                 return
 
-            # 2. RESOLVE TARGET (Smart Lookup)
             target_obj = None
             if parsed.get("object_chain") and len(parsed["object_chain"]) > 0:
                 target_obj = self.resolve_chain(parsed["object_chain"])
             elif parsed.get("object"): 
-                # Fallback if chain is empty/simple
                 objs = self.find_object_by_description(parsed["object"])
-                if objs: target_obj = objs[0] # Default to first match if simple
+                if objs: target_obj = objs[0]
 
-            # 3. DECIDE MOVEMENT TYPE
             if target_obj:
-                # --- A. OBJECT FOUND: PATHFINDING (Auto-Pilot) ---
                 if action == "pick":
                     self.auto_target = target_obj
                     self.auto_action = "pick"
@@ -510,8 +518,6 @@ class Game:
                     self.message = f"Moving to {target_obj.color} {target_obj.shape}..."
             
             else:
-                # --- B. NO OBJECT: DIRECTIONAL MOVEMENT (Restored!) ---
-                # This runs if you say "Move left", "Go behind", etc.
                 relation = parsed.get("relation")
                 
                 if relation == "left_of":
@@ -520,10 +526,10 @@ class Game:
                 elif relation == "right_of":
                     self.player.move(10, 0)
                     self.message = "Moving Right"
-                elif relation == "in_front_of": # "Up" in 2D
+                elif relation == "in_front_of":
                     self.player.move(0, -10)
                     self.message = "Moving Up"
-                elif relation == "behind": # "Down" in 2D
+                elif relation == "behind":
                     self.player.move(0, 10)
                     self.message = "Moving Down"
                 else:
